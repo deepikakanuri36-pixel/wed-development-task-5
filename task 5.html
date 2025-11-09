@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Light Premium Mixed Store</title>
+<style>
+:root{
+  --bg:#f5f5f5;
+  --card:#ffffff;
+  --accent:#fbbf24;
+  --text:#111827;
+  --muted:#6b7280;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;font-family:Inter,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
+.container{max-width:1200px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 0}
+h1{font-size:1.25rem;margin:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;margin-top:18px}
+.card{background:var(--card);border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.05);overflow:hidden;display:flex;flex-direction:column;transition:transform .2s ease,box-shadow .2s}
+.card:hover{transform:translateY(-6px);box-shadow:0 12px 30px rgba(0,0,0,0.1)}
+.media{height:200px;display:grid;place-items:center;overflow:hidden}
+.media img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s ease}
+.card:hover .media img{transform:scale(1.05)}
+.body{padding:12px 14px;flex:1;display:flex;flex-direction:column}
+.title{font-weight:600;margin-bottom:6px;font-size:1rem}
+.desc{font-size:0.85rem;color:var(--muted);margin-bottom:12px;flex:1}
+.price-row{display:flex;align-items:center;justify-content:space-between}
+.price{font-weight:700}
+.btn{background:var(--accent);color:#111827;border:0;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;transition:opacity .2s}
+.btn:hover{opacity:0.85}
+.btn.secondary{background:transparent;color:var(--text);border:1px solid var(--muted)}
+.badges{display:flex;gap:6px;margin-bottom:8px}
+.badge{background:var(--accent);color:#111827;padding:4px 8px;border-radius:999px;font-size:0.78rem;font-weight:600}
+.cart-toggle{background:transparent;border:1px solid var(--muted);padding:8px 12px;border-radius:10px;cursor:pointer}
+.cart{position:fixed;right:20px;bottom:20px;background:var(--card);width:320px;max-height:70vh;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,0.1);overflow:auto}
+.cart-header{display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid #e5e7eb}
+.cart-list{padding:12px}
+.cart-item{display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px dashed #e5e7eb}
+.cart-item img{width:56px;height:56px;object-fit:cover;border-radius:8px}
+.cart-footer{padding:12px;border-top:1px solid #e5e7eb}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--accent);color:#111827;padding:10px 18px;border-radius:10px;opacity:0;transition:opacity .5s;pointer-events:none;z-index:9999}
+.search-bar{margin-bottom:18px;display:flex;gap:8px}
+.search-bar input, .search-bar select{flex:1;padding:8px 12px;border-radius:8px;border:none;outline:none;}
+.quantity-selector{display:flex;align-items:center;gap:4px;margin-top:6px}
+.quantity-selector button{padding:4px 8px;border:1px solid #e5e7eb;border-radius:6px;background:#f5f5f5;cursor:pointer;}
+.quantity-selector span{min-width:20px;text-align:center;display:inline-block}
+@media (max-width:520px){.media{height:160px}}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>Light Premium Mixed Store</h1>
+<div style="display:flex;gap:10px;align-items:center">
+<button id="view-cart" class="cart-toggle">View Cart (<span id="cart-count">0</span>)</button>
+</div>
+</header>
+<div class="search-bar">
+<input type="text" id="search" placeholder="Search products...">
+<select id="category">
+<option value="all">All Categories</option>
+<option value="fashion">Fashion</option>
+<option value="electronics">Electronics</option>
+<option value="home">Home Decor</option>
+<option value="kitchen">Kitchen</option>
+</select>
+<select id="sort">
+<option value="default">Sort By</option>
+<option value="price-asc">Price: Low to High</option>
+<option value="price-desc">Price: High to Low</option>
+</select>
+</div>
+<div class="grid" id="product-grid"></div>
+</div>
+
+<div id="cart" class="cart" style="display:none">
+<div class="cart-header">
+<strong>Your Cart</strong>
+<button id="close-cart" class="cart-toggle">Close</button>
+</div>
+<div class="cart-list" id="cart-list"></div>
+<div class="cart-footer">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>Total:</strong><strong id="cart-total">₹0</strong></div>
+<button id="checkout" class="btn" style="width:100%">Checkout</button>
+</div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const products=[
+{id:1,title:'Urban Sneakers',desc:'Breathable knit sneakers',price:2499,category:'fashion',img:'https://images.unsplash.com/photo-1618354694701-5c3ec22a1f16?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.5,discount:10},
+{id:2,title:'Leather Bag',desc:'Handcrafted leather satchel',price:5999,category:'fashion',img:'https://images.unsplash.com/photo-1600180758895-93f5912ed804?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.8,discount:15},
+{id:3,title:'Wrist Watch',desc:'Slim stainless steel watch',price:7999,category:'fashion',img:'https://images.unsplash.com/photo-1585386959984-a4155226fa9e?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.6,discount:20},
+{id:4,title:'Aviator Sunglasses',desc:'Polarized stylish lenses',price:1999,category:'fashion',img:'https://images.unsplash.com/photo-1578422252101-7b59011e5bfb?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.3,discount:0},
+{id:5,title:'Signature Perfume',desc:'Woody citrus fragrance',price:3499,category:'fashion',img:'https://images.unsplash.com/photo-1610935564196-6d6ff5be0dbb?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.7,discount:5},
+{id:6,title:'Wireless Headphones',desc:'Noise-cancelling over-ear',price:6999,category:'electronics',img:'https://images.unsplash.com/photo-1580894894514-cf9df1c3f659?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.6,discount:10},
+{id:7,title:'Smartphone',desc:'Latest Android device',price:39999,category:'electronics',img:'https://images.unsplash.com/photo-1510557880182-3de1e0f53c8c?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.8,discount:12},
+{id:8,title:'Laptop',desc:'High-performance laptop',price:79999,category:'electronics',img:'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.7,discount:15},
+{id:9,title:'Espresso Machine',desc:'Cafe-style coffee maker',price:8999,category:'kitchen',img:'https://images.unsplash.com/photo-1600891964599-f61ba0e24092?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.4,discount:8},
+{id:10,title:'Table Lamp',desc:'Modern LED lamp',price:2999,category:'home',img:'https://images.unsplash.com/photo-1596079899680-048d7123c59b?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.5,discount:0},
+{id:11,title:'Decorative Vase',desc:'Stylish ceramic vase',price:1999,category:'home',img:'https://images.unsplash.com/photo-1587300003388-59208cc962cb?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.3,discount:0},
+{id:12,title:'Cookware Set',desc:'Non-stick kitchen set',price:4999,category:'kitchen',img:'https://images.unsplash.com/photo-1606312618986-51d2c8f2e3b0?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.6,discount:12},
+{id:13,title:'Office Chair',desc:'Ergonomic swivel chair',price:7999,category:'home',img:'https://images.unsplash.com/photo-1582582494703-50f7d5f7a74d?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.4,discount:0},
+{id:14,title:'Jacket',desc:'Winter fashion jacket',price:5999,category:'fashion',img:'https://images.unsplash.com/photo-1602810318277-bff7c0a0e8c1?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.5,discount:10},
+{id:15,title:'Blender',desc:'High-speed blender',price:3999,category:'kitchen',img:'https://images.unsplash.com/photo-1604908177073-b1f2a0b8a3f3?crop=entropy&cs=tinysrgb&fit=max&h=600&w=600',rating:4.3,discount:5}
+];
+
+const grid=document.getElementById('product-grid');
+const cartBtn=document.getElementById('view-cart');
+const cartEl=document.getElementById('cart');
+const closeCartBtn=document.getElementById('close-cart');
+const cartList=document.getElementById('cart-list');
+const cartCount=document.getElementById('cart-count');
+const cartTotal=document.getElementById('cart-total');
+const toast=document.getElementById('toast');
+const searchInput=document.getElementById('search');
+const categorySelect=document.getElementById('category');
+const sortSelect=document.getElementById('sort');
+let cart=[];
+
+function formatINR(n){return '₹'+n.toLocaleString('en-IN')}
+
+function showToast(msg){toast.textContent=msg;toast.style.opacity='1';setTimeout(()=>{toast.style.opacity='0'},2000)}
+
+function renderProducts(filter=''){
+  grid.innerHTML='';
+  let filtered=products.filter(p=>p.title.toLowerCase().includes(filter) || p.category===filter || filter==='');
+  if(sortSelect.value==='price-asc') filtered.sort((a,b)=>a.price-b.price);
+  else if(sortSelect.value==='price-desc') filtered.sort((a,b)=>b.price-a.price);
+  filtered.forEach(p=>{
+    const card=document.createElement('article');
+    card.className='card';
+    card.innerHTML=`<div class="media"><img loading="lazy" src="${p.img}" alt="${p.title}"></div>
+    <div class="body">
+      <div class="badges"><span class="badge">${p.rating.toFixed(1)}⭐</span>${p.discount>0?'<span class="badge">SALE '+p.discount+'% OFF</span>':''}</div>
+      <div class="title">${p.title}</div>
+      <div class="desc">${p.desc}</div>
+      <div class="price-row"><div class="price">${formatINR(p.price)}</div></div>
+      <div class="quantity-selector">
+        <button data-decr="${p.id}">-</button>
+        <span id="qty-${p.id}">1</span>
+        <button data-incr="${p.id}">+</button>
+      </div>
+      <div style="margin-top:8px;"><button class="btn" data-add="${p.id}">Add to Cart</button></div>
+    </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function updateCartUI(){
+  cartList.innerHTML='';
+  if(cart.length===0){cartList.innerHTML='<div style="padding:12px;color:var(--muted)">Your cart is empty.</div>';cartEl.style.display='none';}
+  let total=0;
+  cart.forEach(item=>{
+    const row=document.createElement('div');
+    row.className='cart-item';
+    row.innerHTML=`<img src="${item.img}" alt="${item.title}"><div style="flex:1"><div style="font-weight:600">${item.title}</div><div style="font-size:0.85rem;color:var(--muted)">Qty: ${item.qty}</div></div>
+    <div style="text-align:right"><div style="font-weight:700">${formatINR(item.price*item.qty)}</div>
+    <div style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end">
+    <button class="cart-decr" data-id="${item.id}">-</button>
+    <button class="cart-incr" data-id="${item.id}">+</button>
+    <button class="cart-rem" data-id="${item.id}">Remove</button>
+    </div></div>`;
+    cartList.appendChild(row);
+    total+=item.price*item.qty;
+  });
+  cartCount.textContent=cart.reduce((s,i)=>s+i.qty,0);
+  cartTotal.textContent=formatINR(total);
+}
+
+function addToCart(id){
+  const prod=products.find(p=>p.id===id);
+  const existing=cart.find(c=>c.id===id);
+  let qty=parseInt(document.getElementById('qty-'+id).textContent,10);
+  if(existing){existing.qty+=qty;}else cart.push({...prod,qty:qty});
+  updateCartUI();
+  showToast(prod.title+' added to cart');
+  document.getElementById('qty-'+id).textContent='1';
+}
+
+function changeQty(id,delta){
+  const qtyEl=document.getElementById('qty-'+id);
+  let current=parseInt(qtyEl.textContent,10);
+  current+=delta;
+  if(current<1) current=1;
+  qtyEl.textContent=current;
+}
+
+function cartChangeQty(id,delta){
+  const idx=cart.findIndex(c=>c.id===id);
+  if(idx===-1) return;
+  cart[idx].qty+=delta;
+  if(cart[idx].qty<=0) cart.splice(idx,1);
+  updateCartUI();
+}
+
+function removeItem(id){
+  cart=cart.filter(c=>c.id!==id);
+  updateCartUI();
+}
+
+renderProducts();
+
+document.addEventListener('click',(e)=>{
+  const add=e.target.closest('[data-add]');
+  const decr=e.target.closest('[data-decr]');
+  const incr=e.target.closest('[data-incr]');
+  const cdecr=e.target.closest('.cart-decr');
+  const cincr=e.target.closest('.cart-incr');
+  const rem=e.target.closest('.cart-rem');
+  if(add) addToCart(parseInt(add.dataset.add,10));
+  if(decr) changeQty(parseInt(decr.dataset.decr,10),-1);
+  if(incr) changeQty(parseInt(incr.dataset.incr,10),1);
+  if(cdecr) cartChangeQty(parseInt(cdecr.dataset.id,10),-1);
+  if(cincr) cartChangeQty(parseInt(cincr.dataset.id,10),1);
+  if(rem) removeItem(parseInt(rem.dataset.id,10));
+});
+
+cartBtn.addEventListener('click',()=>{cartEl.style.display=cart.length?'block':'block';cartEl.scrollIntoView({behavior:'smooth',block:'end'});});
+closeCartBtn.addEventListener('click',()=>{cartEl.style.display='none';});
+document.getElementById('checkout').addEventListener('click',()=>{
+  if(cart.length===0){showToast('Cart is empty');return;}
+  showToast('Thanks for your order!');
+  cart=[];
+  updateCartUI();
+});
+
+searchInput.addEventListener('input',()=>{renderProducts(searchInput.value.toLowerCase());});
+categorySelect.addEventListener('change',()=>{renderProducts(categorySelect.value==='all'?'':categorySelect.value);});
+sortSelect.addEventListener('change',()=>{renderProducts(searchInput.value.toLowerCase());});
+updateCartUI();
+</script>
+</body>
+</html>
